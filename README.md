@@ -191,7 +191,7 @@ botmd.clearCache()                    // Clear cache
 Botmd.shouldSkip(request)             // Check if internal request
 ```
 
-[Complete API documentation →](https://botmd.dev/docs/api-reference)
+[Complete API documentation →](https://botmd-docs.vercel.app/docs/api-reference)
 
 ## 🧪 Testing
 
@@ -231,7 +231,7 @@ curl -H "Accept: text/markdown" http://localhost:3000/docs
 
 ## 📖 Documentation
 
-**[Read the full docs at botmd.dev →](https://botmd.dev)**
+**[Read the full docs at botmd-docs.vercel.app →](https://botmd-docs.vercel.app)**
 
 ## 📝 License
 
