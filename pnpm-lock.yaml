@@ -45,8 +45,8 @@ importers:
   docs:
     dependencies:
       botmd:
-        specifier: workspace:*
-        version: link:../packages/botmd
+        specifier: ^1.0.0
+        version: 1.0.0
       fumadocs-core:
         specifier: 15.8.3
         version: 15.8.3(@types/react@19.2.0)(algoliasearch@5.39.0)(lucide-react@0.544.0(react@19.2.0))(next@15.5.4(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -2610,6 +2610,9 @@ packages:
 
   bl@4.1.0:
     resolution: {integrity: sha512-1W07cM9gS6DcLperZfFSj+bWLtaPGSOHWhPiGzXmvVJbRLdG82sH/Kn8EtW1VqWVA54AKf2h5k5BbnIbwF3h6w==}
+
+  botmd@1.0.0:
+    resolution: {integrity: sha512-Ihj/STNyXnYpF4v1H9kc1DyMyzzMu/mCyXh7sHspHPp0f6EaG/jDugzMogjhKnl1jSgT+C7LQ/A5CEWj5830Gg==}
 
   brace-expansion@1.1.12:
     resolution: {integrity: sha512-9T9UjW3r0UW5c1Q7GTwllptXwhvYmEzFhzMfZ9H7FQWt+uZePjZPjBP/W1ZEyZ1twGWom5/56TF4lPcqjnDHcg==}
@@ -8356,6 +8359,10 @@ snapshots:
       buffer: 5.7.1
       inherits: 2.0.4
       readable-stream: 3.6.2
+
+  botmd@1.0.0:
+    dependencies:
+      lru-cache: 11.2.2
 
   brace-expansion@1.1.12:
     dependencies:
