@@ -1,0 +1,41 @@
+{
+  "name": "botmd-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Universal AI Bot Markdown Middleware - Monorepo",
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "node tests/index.js", 
+    "test:unit": "pnpm -r test",
+    "dev": "pnpm -r dev",
+    "lint": "eslint packages/*/src/**/*.ts docs/**/*.{ts,tsx} examples/**/*.{ts,tsx} --fix",
+    "lint:check": "eslint packages/*/src/**/*.ts docs/**/*.{ts,tsx} examples/**/*.{ts,tsx}",
+    "clean": "pnpm -r clean && pnpm -r exec rm -rf node_modules",
+    "changeset": "changeset",
+    "release": "changeset publish"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.26.0",
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-import": "^2.29.0",
+    "prettier": "^3.0.0",
+    "tsup": "^7.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^0.34.0"
+  },
+  "keywords": [
+    "ai",
+    "bot", 
+    "markdown",
+    "middleware",
+    "seo",
+    "nextjs",
+    "express"
+  ],
+  "author": "Aniket Chaudhari",
+  "license": "MIT"
+}

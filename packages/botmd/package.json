@@ -1,0 +1,55 @@
+{
+  "name": "botmd",
+  "version": "1.0.0",
+  "description": "Universal AI bot markdown middleware for any JS backend",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "lint": "eslint src/**/*.ts --fix",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "ai",
+    "bot",
+    "markdown",
+    "middleware",
+    "nextjs",
+    "express",
+    "seo",
+    "crawler"
+  ],
+  "author": "Aniket Chaudhari",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aniketchaudhari3/botmd.git",
+    "directory": "packages/botmd"
+  },
+  "homepage": "https://github.com/aniketchaudhari3/botmd#readme",
+  "bugs": {
+    "url": "https://github.com/aniketchaudhari3/botmd/issues"
+  },
+  "dependencies": {
+    "lru-cache": "^11.0.2"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.5",
+    "typescript": "^5.6.3"
+  }
+}
+

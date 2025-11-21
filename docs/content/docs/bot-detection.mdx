@@ -1,0 +1,366 @@
+---
+title: Bot Detection
+description: How Botmd detects and identifies AI agents and crawlers
+---
+
+Botmd uses multiple detection methods to identify AI bots and crawlers visiting your site. This page explains how detection works and how to customize it.
+
+## Detection Methods
+
+### 1. Accept Header (Most Reliable)
+
+The most reliable method is when clients explicitly request markdown via the `Accept` header:
+
+```http
+Accept: text/markdown
+```
+
+**Why this is best:**
+- Explicit intent from the client
+- No ambiguity or false positives
+- Standard HTTP content negotiation
+- Always takes precedence over user-agent detection
+
+**Example:**
+```bash
+curl -H "Accept: text/markdown" https://yoursite.com/docs
+```
+
+### 2. User-Agent Pattern Matching
+
+When the `Accept` header doesn't request markdown, Botmd checks the `User-Agent` header against known AI bot patterns:
+
+```http
+User-Agent: GPTBot/1.0
+```
+
+**Detection logic:**
+1. Extract user-agent from request headers
+2. Check against `disallowed` patterns (if any) → return false if matched
+3. Check against `allowed` patterns (if any) → return true if matched
+4. Check against built-in AI bot patterns → return true if matched
+5. Return false (not a bot)
+
+## Detected Bots
+
+Botmd includes patterns for 50+ AI bots and crawlers out of the box.
+
+### AI Assistants & Search Engines
+
+#### OpenAI
+| Bot | User-Agent Pattern | Purpose |
+|-----|-------------------|---------|
+| GPTBot | `GPTBot` | Web crawling for training |
+| ChatGPT User | `ChatGPT-User` | ChatGPT browsing feature |
+| SearchBot | `OAI-SearchBot` | OpenAI search features |
+
+#### Anthropic
+| Bot | User-Agent Pattern | Purpose |
+|-----|-------------------|---------|
+| ClaudeBot | `ClaudeBot`, `anthropic-ai` | Web crawling for training |
+| Claude Web | `Claude-Web` | Claude browsing feature |
+
+#### Perplexity
+| Bot | User-Agent Pattern | Purpose |
+|-----|-------------------|---------|
+| PerplexityBot | `PerplexityBot` | Web crawling |
+| Perplexity User | `Perplexity-User` | User browsing |
+
+#### Google
+| Bot | User-Agent Pattern | Purpose |
+|-----|-------------------|---------|
+| Google Extended | `Google-Extended` | AI/ML training |
+| Googlebot | `Googlebot` | General web crawling |
+
+#### Other Major Bots
+| Provider | Pattern | Purpose |
+|----------|---------|---------|
+| Meta | `meta-externalfetcher` | AI training |
+| Microsoft | `bingbot` | Bing search |
+| Amazon | `Amazonbot` | Amazon AI |
+| Apple | `Applebot`, `iTMS` | Apple AI |
+| TikTok | `Bytespider`, `TikTokSpider` | Content indexing |
+
+### Coding Assistants
+
+| Tool | User-Agent Pattern | Provider |
+|------|-------------------|----------|
+| GitHub Copilot | `GitHubCopilot`, `CopilotBot` | GitHub |
+| Cursor | `Cursor`, `CursorAgent`, `CursorBot` | Cursor |
+| Codeium | `Windsurf`, `CodeiumAgent`, `Codeium` | Codeium |
+| Tabnine | `TabnineAgent`, `Tabnine` | Tabnine |
+| Replit | `ReplitAgent`, `ReplitAI` | Replit |
+
+### AI Crawlers & Tools
+
+| Tool | User-Agent Pattern | Purpose |
+|------|-------------------|---------|
+| Firecrawl | `FirecrawlAgent`, `Firecrawl` | Web scraping API |
+| Jina | `JinaBot`, `JinaReader` | AI search & reading |
+| Tavily | `TavilyBot`, `TavilySearchBot` | AI search API |
+| Exa | `ExaBot`, `Exa` | Neural search |
+| You.com | `YouBot`, `YouSearch` | AI search |
+
+### Training Crawlers
+
+| Tool | User-Agent Pattern | Purpose |
+|------|-------------------|---------|
+| Common Crawl | `CCBot` | Open web archive |
+| Diffbot | `Diffbot` | Knowledge graph |
+| Cohere | `cohere-training-data-crawler`, `cohere-ai` | AI training |
+| DuckDuckGo | `DuckAssistBot` | AI features |
+
+[View complete list in source code](https://github.com/yourusername/botmd/blob/main/packages/botmd/src/ai-bots.ts)
+
+## Custom Detection
+
+### Adding Custom Bots
+
+You can add your own bot patterns to detect custom crawlers or internal tools:
+
+```typescript
+const botmd = new Botmd({
+  userAgents: {
+    allowed: [
+      // String matching (case-insensitive)
+      'MyCompanyBot',
+      'InternalCrawler',
+      
+      // Regular expressions for more complex patterns
+      /CustomBot\/\d+\.\d+/,           // CustomBot/1.0, CustomBot/2.1, etc.
+      /MyAgent\/.*\(compatible\)/,     // MyAgent/1.0 (compatible)
+    ]
+  }
+});
+```
+
+**String matching:**
+- Case-insensitive
+- Partial match (e.g., `'GPT'` matches `'GPTBot/1.0'`)
+- Fast and simple
+
+**RegExp matching:**
+- Full control over pattern
+- Can match version numbers, complex formats
+- Case-sensitive by default (use `/pattern/i` for case-insensitive)
+
+### Blocking Specific Bots
+
+You can block specific bots even if they match the built-in patterns:
+
+```typescript
+const botmd = new Botmd({
+  userAgents: {
+    disallowed: [
+      'BadBot',              // Block this specific bot
+      /SpamCrawler.*/,       // Block all SpamCrawler variants
+      'UnwantedScraper'      // Block another bot
+    ]
+  }
+});
+```
+
+**Priority:** `disallowed` always takes precedence over `allowed` and built-in patterns.
+
+### Combining Allow and Disallow
+
+```typescript
+const botmd = new Botmd({
+  userAgents: {
+    // Add custom bots
+    allowed: [
+      'MyCustomBot',
+      /InternalTool\/\d+/
+    ],
+    // Block specific bots
+    disallowed: [
+      'BadBot',
+      /Spam.*/
+    ]
+  }
+});
+```
+
+**Detection flow:**
+1. Check `disallowed` → if match, return false (not allowed)
+2. Check `allowed` → if match, return true (allowed)
+3. Check built-in patterns → if match, return true (allowed)
+4. Return false (not a bot)
+
+## Advanced Patterns
+
+### Version-Aware Matching
+
+```typescript
+{
+  userAgents: {
+    allowed: [
+      // Match specific versions
+      /GPTBot\/[2-9]\./,           // GPTBot 2.0+
+      
+      // Match version ranges
+      /ClaudeBot\/1\.[5-9]/,       // Claude 1.5-1.9
+      
+      // Match any version
+      /MyBot\/\d+\.\d+\.\d+/,      // MyBot with semver
+    ]
+  }
+}
+```
+
+### Platform-Specific Detection
+
+```typescript
+{
+  userAgents: {
+    allowed: [
+      // Mobile bots
+      /MobileBot.*Mobile/,
+      
+      // Desktop bots
+      /DesktopBot.*(Windows|Mac|Linux)/,
+      
+      // Specific platforms
+      /Bot.*\(compatible; MSIE|Trident/,
+    ]
+  }
+}
+```
+
+### Complex Boolean Logic
+
+For complex scenarios, you can check the result and add custom logic:
+
+```typescript
+const result = await botmd.createResponse(request);
+
+// Custom logic
+const userAgent = request.headers.get('user-agent') || '';
+const isSpecialBot = userAgent.includes('SpecialBot') && 
+                     someOtherCondition;
+
+if (result.shouldConvert || isSpecialBot) {
+  return new Response(result.content, {
+    headers: result.headers
+  });
+}
+```
+
+## Testing Bot Detection
+
+### Manual Testing
+
+```bash
+# Test as regular browser
+curl http://localhost:3000/docs
+
+# Test as GPTBot
+curl -H "User-Agent: GPTBot/1.0" http://localhost:3000/docs
+
+# Test as Claude
+curl -H "User-Agent: ClaudeBot/1.0" http://localhost:3000/docs
+
+# Test with Accept header (most reliable)
+curl -H "Accept: text/markdown" http://localhost:3000/docs
+
+# Test custom bot
+curl -H "User-Agent: MyCustomBot/1.0" http://localhost:3000/docs
+```
+
+### Debug Mode
+
+Enable debug logging to see detection decisions:
+
+```typescript
+const botmd = new Botmd({
+  debug: true,  // Verbose logging
+  logRequests: true  // Log all bot requests
+});
+```
+
+**Debug output includes:**
+- Request URL and user-agent
+- Bot detection result
+- Path matching result
+- Cache hit/miss
+- Conversion details
+
+## Security Considerations
+
+### Rate Limiting
+
+Consider rate limiting bot requests to prevent abuse:
+
+```typescript
+// Example with Next.js
+import rateLimit from 'express-rate-limit';
+
+const botLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 10 // 10 requests per minute
+});
+
+export async function middleware(request: NextRequest) {
+  const result = await botmd.createResponse(request);
+  
+  if (result.isBot) {
+    // Apply rate limiting for bots
+    // Implementation depends on your framework
+  }
+  
+  // ... rest of middleware
+}
+```
+
+### robots.txt Integration
+
+Botmd works independently of `robots.txt`, but they complement each other:
+
+```txt title="public/robots.txt"
+# Allow friendly bots
+User-agent: GPTBot
+Allow: /docs/
+Disallow: /api/
+
+User-agent: ClaudeBot
+Allow: /docs/
+Disallow: /api/
+
+# Block bad bots
+User-agent: BadBot
+Disallow: /
+```
+
+### Monitoring
+
+Log bot requests to monitor traffic patterns:
+
+```typescript
+const botmd = new Botmd({
+  logRequests: true  // Logs: timestamp, path, user-agent
+});
+
+// Custom logging
+const result = await botmd.createResponse(request);
+if (result.isBot) {
+  analytics.track('bot_request', {
+    userAgent: request.headers.get('user-agent'),
+    path: new URL(request.url).pathname,
+    cached: result.cached
+  });
+}
+```
+
+## Best Practices
+
+1. **Start permissive, then restrict**: Begin by allowing all bots, then add restrictions based on actual traffic
+2. **Use `disallowed` sparingly**: Only block known bad actors
+3. **Test thoroughly**: Verify bot detection works with curl before deploying
+4. **Monitor logs**: Keep an eye on which bots are accessing your site
+5. **Update patterns**: As new AI bots emerge, update your patterns or the botmd package
+6. **Use Accept header when possible**: Encourage bot developers to use proper content negotiation
+
+## Next Steps
+
+- [Usage Examples](/docs/usage) - See framework integration examples
+- [API Reference](/docs/api-reference) - Complete configuration options

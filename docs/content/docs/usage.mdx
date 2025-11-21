@@ -1,0 +1,573 @@
+---
+title: Usage Examples
+description: Complete examples for integrating Botmd with popular frameworks
+---
+
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+
+Botmd works with any JavaScript framework. Below are production-ready examples for popular frameworks.
+
+## Framework Examples
+
+<Tabs items={['Next.js', 'Express', 'Hono', 'NestJS', 'Bun', 'Node.js']}>
+  <Tab value="Next.js">
+    ### Next.js App Router
+
+    ```typescript title="middleware.ts"
+    import { Botmd } from 'botmd';
+    import { NextRequest, NextResponse } from 'next/server';
+
+    const botmd = new Botmd({
+      paths: {
+        // Allow all paths except these
+        disallowed: ['/api/**', '/_next/**', '/admin/**']
+      },
+      logRequests: process.env.NODE_ENV === 'development',
+      cache: {
+        enabled: true,
+        ttl: 86400000, // 1 day
+        maxSize: 1000
+      }
+    });
+
+    export async function middleware(request: NextRequest) {
+      // Skip internal requests to prevent loops
+      if (Botmd.shouldSkip(request)) {
+        return NextResponse.next();
+      }
+
+      const result = await botmd.createResponse(request);
+      
+      // Not a bot or path not allowed
+      if (!result.shouldConvert) {
+        return NextResponse.next();
+      }
+      
+      // Handle conversion errors gracefully
+      if (result.error) {
+        console.error('Botmd error:', result.error);
+        return NextResponse.next();
+      }
+      
+      // Return markdown to the bot
+      return new NextResponse(result.content, { 
+        headers: {
+          ...result.headers,
+          'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=43200'
+        }
+      });
+    }
+
+    export const config = {
+      matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)']
+    };
+    ```
+
+    ### Alternative: Specific Paths Only
+
+    ```typescript title="middleware.ts"
+    const botmd = new Botmd({
+      paths: {
+        // Only convert these paths
+        allowed: ['/docs/**', '/blog/**', '/api-reference/**']
+      }
+    });
+    ```
+  </Tab>
+
+  <Tab value="Express">
+    ### Express Middleware
+
+    ```typescript title="server.ts"
+    import express from 'express';
+    import { Botmd } from 'botmd';
+
+    const app = express();
+    
+    const botmd = new Botmd({
+      paths: {
+        disallowed: ['/api/**', '/admin/**']
+      },
+      logRequests: true
+    });
+
+    // Botmd middleware - must come before route handlers
+    app.use(async (req, res, next) => {
+      // Skip internal requests
+      if (Botmd.shouldSkip(req)) {
+        return next();
+      }
+
+      const result = await botmd.createResponse(req);
+      
+      if (!result.shouldConvert) {
+        return next();
+      }
+      
+      if (result.error) {
+        console.error('Botmd error:', result.error);
+        return next();
+      }
+      
+      res.set(result.headers);
+      res.send(result.content);
+    });
+
+    // Your routes
+    app.get('/docs', (req, res) => {
+      res.send('<h1>Documentation</h1><p>Welcome to our docs!</p>');
+    });
+
+    app.get('/api/users', (req, res) => {
+      res.json({ users: [] }); // API routes return JSON
+    });
+
+    const PORT = process.env.PORT || 3000;
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+    ```
+
+    ### With TypeScript
+
+    ```typescript title="server.ts"
+    import express, { Request, Response, NextFunction } from 'express';
+    import { Botmd } from 'botmd';
+
+    const botmd = new Botmd({
+      paths: { disallowed: ['/api/**'] }
+    });
+
+    const botmdMiddleware = async (
+      req: Request, 
+      res: Response, 
+      next: NextFunction
+    ): Promise<void> => {
+      if (Botmd.shouldSkip(req)) {
+        return next();
+      }
+
+      const result = await botmd.createResponse(req);
+      
+      if (!result.shouldConvert) {
+        return next();
+      }
+      
+      res.set(result.headers);
+      res.send(result.content);
+    };
+
+    app.use(botmdMiddleware);
+    ```
+  </Tab>
+
+  <Tab value="Hono">
+    ### Hono Framework
+
+    ```typescript title="app.ts"
+    import { Hono } from 'hono';
+    import { Botmd } from 'botmd';
+
+    const app = new Hono();
+    
+    const botmd = new Botmd({
+      paths: {
+        disallowed: ['/api/**']
+      }
+    });
+
+    // Global middleware
+    app.use('*', async (c, next) => {
+      // Skip internal requests
+      if (Botmd.shouldSkip(c.req.raw)) {
+        return next();
+      }
+
+      const result = await botmd.createResponse(c.req.raw);
+      
+      if (!result.shouldConvert) {
+        return next();
+      }
+      
+      if (result.error) {
+        console.error('Botmd error:', result.error);
+        return next();
+      }
+      
+      return c.text(result.content!, 200, result.headers);
+    });
+
+    // Routes
+    app.get('/docs', (c) => {
+      return c.html('<h1>Documentation</h1>');
+    });
+
+    app.get('/api/data', (c) => {
+      return c.json({ data: [] });
+    });
+
+    export default app;
+    ```
+
+    ### Edge Runtime (Cloudflare Workers)
+
+    ```typescript title="worker.ts"
+    import { Hono } from 'hono';
+    import { Botmd } from 'botmd';
+
+    const app = new Hono();
+    const botmd = new Botmd();
+
+    app.use('*', async (c, next) => {
+      const result = await botmd.createResponse(c.req.raw);
+      
+      if (result.shouldConvert) {
+        return c.text(result.content!, 200, result.headers);
+      }
+      
+      return next();
+    });
+
+    export default app;
+    ```
+  </Tab>
+
+  <Tab value="NestJS">
+    ### NestJS Middleware
+
+    ```typescript title="src/middleware/botmd.middleware.ts"
+    import { Injectable, NestMiddleware } from '@nestjs/common';
+    import { Request, Response, NextFunction } from 'express';
+    import { Botmd } from 'botmd';
+
+    @Injectable()
+    export class BotmdMiddleware implements NestMiddleware {
+      private botmd = new Botmd({
+        paths: {
+          disallowed: ['/api/**', '/admin/**']
+        },
+        logRequests: process.env.NODE_ENV === 'development'
+      });
+
+      async use(req: Request, res: Response, next: NextFunction) {
+        // Skip internal requests
+        if (Botmd.shouldSkip(req)) {
+          return next();
+        }
+
+        const result = await this.botmd.createResponse(req);
+        
+        if (!result.shouldConvert) {
+          return next();
+        }
+        
+        if (result.error) {
+          console.error('Botmd error:', result.error);
+          return next();
+        }
+        
+        res.set(result.headers);
+        res.send(result.content);
+      }
+    }
+    ```
+
+    ```typescript title="src/app.module.ts"
+    import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
+    import { BotmdMiddleware } from './middleware/botmd.middleware';
+
+    @Module({
+      // ... your modules
+    })
+    export class AppModule implements NestModule {
+      configure(consumer: MiddlewareConsumer) {
+        // Apply to all routes
+        consumer
+          .apply(BotmdMiddleware)
+          .forRoutes('*');
+        
+        // Or apply to specific routes
+        // consumer
+        //   .apply(BotmdMiddleware)
+        //   .forRoutes('docs', 'blog', 'api-reference');
+      }
+    }
+    ```
+  </Tab>
+
+  <Tab value="Bun">
+    ### Bun Server
+
+    ```typescript title="server.ts"
+    import { Botmd } from 'botmd';
+
+    const botmd = new Botmd({
+      paths: {
+        disallowed: ['/api/**']
+      },
+      logRequests: true
+    });
+
+    Bun.serve({
+      port: 3000,
+      async fetch(request) {
+        const url = new URL(request.url);
+        
+        // Skip internal requests
+        if (Botmd.shouldSkip(request)) {
+          return handleNormalRequest(url);
+        }
+        
+        // Try botmd conversion
+        const result = await botmd.createResponse(request);
+        
+        if (result.shouldConvert && result.content) {
+          return new Response(result.content, {
+            headers: result.headers
+          });
+        }
+
+        // Handle normal request
+        return handleNormalRequest(url);
+      },
+    });
+
+    function handleNormalRequest(url: URL): Response {
+      if (url.pathname === '/docs') {
+        return new Response('<h1>Documentation</h1>', {
+          headers: { 'Content-Type': 'text/html' }
+        });
+      }
+      
+      if (url.pathname === '/api/data') {
+        return new Response(JSON.stringify({ data: [] }), {
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+      
+      return new Response('Not Found', { status: 404 });
+    }
+
+    console.log('Server running on http://localhost:3000');
+    ```
+
+    ### With Elysia
+
+    ```typescript title="server.ts"
+    import { Elysia } from 'elysia';
+    import { Botmd } from 'botmd';
+
+    const botmd = new Botmd();
+
+    new Elysia()
+      .onBeforeHandle(async ({ request, set }) => {
+        if (Botmd.shouldSkip(request)) {
+          return;
+        }
+
+        const result = await botmd.createResponse(request);
+        
+        if (result.shouldConvert) {
+          set.headers = result.headers;
+          return result.content;
+        }
+      })
+      .get('/docs', () => '<h1>Documentation</h1>')
+      .listen(3000);
+    ```
+  </Tab>
+
+  <Tab value="Node.js">
+    ### Node.js HTTP Server
+
+    ```typescript title="server.ts"
+    import http from 'node:http';
+    import { Botmd } from 'botmd';
+
+    const botmd = new Botmd({
+      paths: {
+        disallowed: ['/api/**']
+      }
+    });
+
+    const server = http.createServer(async (req, res) => {
+      // Construct full URL
+      const url = `http://${req.headers.host}${req.url}`;
+      
+      // Convert headers to simple object
+      const headers: Record<string, string> = {};
+      Object.entries(req.headers).forEach(([key, value]) => {
+        if (typeof value === 'string') {
+          headers[key] = value;
+        } else if (Array.isArray(value) && value.length > 0) {
+          headers[key] = value[0];
+        }
+      });
+
+      // Create request object
+      const request = { url, headers };
+      
+      // Check if internal request
+      if (Botmd.shouldSkip(request)) {
+        return handleNormalRequest(req, res);
+      }
+      
+      // Try botmd conversion
+      const result = await botmd.createResponse(request);
+      
+      if (result.shouldConvert && result.content) {
+        res.writeHead(200, result.headers);
+        res.end(result.content);
+        return;
+      }
+      
+      // Handle normal request
+      handleNormalRequest(req, res);
+    });
+
+    function handleNormalRequest(
+      req: http.IncomingMessage,
+      res: http.ServerResponse
+    ) {
+      const url = new URL(req.url || '/', `http://${req.headers.host}`);
+      
+      if (url.pathname === '/docs') {
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end('<h1>Documentation</h1>');
+      } else {
+        res.writeHead(404);
+        res.end('Not Found');
+      }
+    }
+
+    const PORT = process.env.PORT || 3000;
+    server.listen(PORT, () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
+    ```
+  </Tab>
+</Tabs>
+
+## Common Patterns
+
+### Environment-Based Configuration
+
+```typescript
+const botmd = new Botmd({
+  enabled: process.env.NODE_ENV === 'production',
+  logRequests: process.env.NODE_ENV === 'development',
+  debug: process.env.DEBUG === 'true',
+  cache: {
+    enabled: process.env.DISABLE_CACHE !== 'true',
+    ttl: parseInt(process.env.CACHE_TTL || '86400000', 10)
+  }
+});
+```
+
+### Custom Bot Patterns
+
+```typescript
+const botmd = new Botmd({
+  userAgents: {
+    // Add your custom bot patterns
+    allowed: [
+      'MyCompanyBot',
+      /InternalCrawler\/\d+\.\d+/
+    ],
+    // Block specific bots
+    disallowed: [
+      'BadBot',
+      /SpamCrawler/
+    ]
+  }
+});
+```
+
+### Multiple Path Rules
+
+```typescript
+const botmd = new Botmd({
+  paths: {
+    // Allow documentation and blog
+    allowed: [
+      '/docs/**',
+      '/blog/**',
+      '/api-reference/**',
+      '/guides/**'
+    ],
+    // But exclude these specific paths
+    disallowed: [
+      '/docs/internal/**',
+      '/blog/drafts/**',
+      '/api/**',
+      '/admin/**'
+    ]
+  }
+});
+```
+
+### Error Handling
+
+```typescript
+export async function middleware(request: NextRequest) {
+  try {
+    const result = await botmd.createResponse(request);
+    
+    if (!result.shouldConvert) {
+      return NextResponse.next();
+    }
+    
+    // Handle errors gracefully
+    if (result.error) {
+      console.error('Botmd conversion error:', result.error);
+      // Fall back to normal response
+      return NextResponse.next();
+    }
+    
+    return new NextResponse(result.content, { 
+      headers: result.headers 
+    });
+  } catch (error) {
+    console.error('Unexpected botmd error:', error);
+    // Always fall back to normal response on error
+    return NextResponse.next();
+  }
+}
+```
+
+### Cache Management
+
+```typescript
+const botmd = new Botmd({
+  cache: {
+    enabled: true,
+    ttl: 3600000, // 1 hour
+    maxSize: 500  // 500 entries
+  }
+});
+
+// Clear cache programmatically
+// Useful for: deployments, content updates, testing
+botmd.clearCache();
+```
+
+### Testing Your Integration
+
+```bash
+# Test with a regular browser (should get HTML)
+curl http://localhost:3000/docs
+
+# Test with a bot user-agent (should get Markdown)
+curl -H "User-Agent: GPTBot" http://localhost:3000/docs
+
+# Test with explicit Accept header (should get Markdown)
+curl -H "Accept: text/markdown" http://localhost:3000/docs
+
+# Test with debug logging
+DEBUG=true node server.js
+```
+
+## Next Steps
+
+- [API Reference](/docs/api-reference) - Complete configuration options
+- [Bot Detection](/docs/bot-detection) - Learn about bot detection

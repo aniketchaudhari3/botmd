@@ -1,0 +1,162 @@
+---
+title: API reference
+description: Configuration options and API reference
+---
+
+## Config Interface
+
+```typescript
+interface BotmdConfig {
+  enabled?: boolean;
+  paths?: {
+    allowed?: (string | RegExp)[];
+    disallowed?: (string | RegExp)[];
+  };
+  userAgents?: {
+    allowed?: (string | RegExp)[];
+    disallowed?: (string | RegExp)[];
+  };
+  cache?: {
+    enabled?: boolean;
+    ttl?: number;
+    maxSize?: number;
+  };
+  logRequests?: boolean;
+  debug?: boolean;
+}
+```
+
+## Configuration Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `enabled` | `boolean` | `true` | Enables or disables bot detection and conversion. When `false`, all requests pass through without processing. |
+| `paths.allowed` | `(string \| RegExp)[]` | `[]` | Paths to convert to markdown for bots. Supports exact matches (`'/docs'`), single-level wildcards (`'/docs/*'`), multi-level wildcards (`'/docs/**'`), and regular expressions (`/^\/api\/.*/`). Empty array allows all paths. |
+| `paths.disallowed` | `(string \| RegExp)[]` | `[]` | Paths to exclude from conversion. Takes priority over `allowed`. Use for sensitive routes like admin panels or API endpoints. |
+| `userAgents.allowed` | `(string \| RegExp)[]` | `[]` | Custom user agents to treat as bots. Supports case-insensitive strings and regular expressions. Adds to the built-in bot detection. |
+| `userAgents.disallowed` | `(string \| RegExp)[]` | `[]` | User agents to exclude from bot detection, even if they match built-in patterns. |
+| `cache.enabled` | `boolean` | `true` | Enables in-memory caching of converted markdown. Significantly improves performance for repeated bot requests. |
+| `cache.ttl` | `number` | `86400000` | Time-to-live for cached entries in milliseconds (default: 1 day). After this period, cached markdown is regenerated. |
+| `cache.maxSize` | `number` | `1000` | Maximum number of entries in the cache. Older entries are evicted when the limit is reached. |
+| `logRequests` | `boolean` | `false` | Logs bot requests and conversion details to the console. Useful for monitoring and debugging. |
+| `debug` | `boolean` | `false` | Enables verbose logging including HTML fetching, conversion steps, and cache operations. |
+
+## Example Configuration
+
+```typescript
+const botmd = new Botmd({
+  enabled: process.env.NODE_ENV === 'production',
+  
+  paths: {
+    allowed: ['/docs/**', '/blog/**', '/api-reference/**'],
+    disallowed: ['/api/**', '/admin/**', '/dashboard/**']
+  },
+  
+  userAgents: {
+    allowed: ['MyCustomBot', /CustomCrawler\/\d+/],
+    disallowed: ['BadBot']
+  },
+  
+  cache: {
+    enabled: true,
+    ttl: 86400000,  // 1 day
+    maxSize: 2000
+  },
+  
+  logRequests: true,
+  debug: false
+});
+```
+
+## API Methods
+
+### `createResponse(request)`
+
+Processes an incoming request and returns a markdown response if it's from a bot.
+
+```typescript
+const result = await botmd.createResponse(request);
+```
+
+**Parameters:**
+- `request`: `Request` - The incoming HTTP request object
+
+**Returns:** `Promise<BotmdResponse>`
+
+```typescript
+interface BotmdResponse {
+  isBot: boolean;              // Whether a bot was detected
+  content: string | null;      // Converted markdown content
+  headers: Record<string, string>;  // Response headers to set
+  shouldConvert: boolean;      // Whether conversion should happen
+  cached?: boolean;            // Whether response came from cache
+  error?: Error;               // Error if conversion failed
+}
+```
+
+**Usage:**
+
+```typescript
+import { Botmd } from 'botmd';
+
+const botmd = new Botmd({
+  paths: { allowed: ['/docs/**'] },
+  logRequests: true
+});
+
+// In your middleware or handler
+const result = await botmd.createResponse(request);
+
+if (result.shouldConvert && result.content) {
+  return new Response(result.content, {
+    headers: {
+      'Content-Type': 'text/markdown; charset=utf-8',
+      ...result.headers
+    }
+  });
+}
+```
+
+### `clearCache()`
+
+Clears all cached markdown conversions.
+
+```typescript
+botmd.clearCache();
+```
+
+**Usage:**
+
+```typescript
+// Clear cache manually (useful for testing or cache invalidation)
+botmd.clearCache();
+```
+
+### `static shouldSkip(request)`
+
+Check if a request should skip botmd processing (e.g., internal requests).
+
+```typescript
+const shouldSkip = Botmd.shouldSkip(request);
+```
+
+**Parameters:**
+- `request`: `Request` - The incoming HTTP request object
+
+**Returns:** `boolean` - `true` if the request should skip processing
+
+**Usage:**
+
+```typescript
+import { Botmd } from 'botmd';
+
+export function middleware(request: Request) {
+  // Skip internal requests to prevent loops
+  if (Botmd.shouldSkip(request)) {
+    return NextResponse.next();
+  }
+  
+  const result = await botmd.createResponse(request);
+  // ... handle result
+}
+```

@@ -1,0 +1,215 @@
+---
+title: Introduction
+description: Universal AI bot markdown middleware - serve clean, structured markdown to AI agents and crawlers
+---
+
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+import { Card } from 'fumadocs-ui/components/card';
+
+# Botmd
+
+**Universal AI bot markdown middleware for any JavaScript framework.**
+
+When AI agents visit your site, they get clean, structured markdown instead of HTML - making your content more accessible to AI models while reducing token usage.
+
+## Why Botmd?
+
+Modern AI agents and crawlers are consuming web content at an unprecedented scale. Serving them clean markdown instead of HTML provides multiple benefits:
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
+  <Card>
+    <div className="font-semibold mb-2">📉 Lower Token Usage</div>
+    <p className="text-sm text-muted-foreground">Markdown uses ~60% fewer tokens than HTML, reducing costs and improving processing speed</p>
+  </Card>
+  
+  <Card>
+    <div className="font-semibold mb-2">🎯 Better Context</div>
+    <p className="text-sm text-muted-foreground">Clean, structured content helps AI models understand and process your pages more accurately</p>
+  </Card>
+  
+  <Card>
+    <div className="font-semibold mb-2">⚡ High Performance</div>
+    <p className="text-sm text-muted-foreground">Built-in LRU cache with TTL ensures fast responses with minimal overhead</p>
+  </Card>
+  
+  <Card>
+    <div className="font-semibold mb-2">🤖 Smart Detection</div>
+    <p className="text-sm text-muted-foreground">Automatically detects 50+ AI bots including GPT, Claude, Perplexity, and more</p>
+  </Card>
+</div>
+
+## Features
+
+- 🤖 **Automatic Bot Detection** - Detects 50+ AI bots and crawlers out of the box
+- 📝 **HTML to Markdown** - Clean conversion with absolute URLs preserved
+- ⚡ **Built-in Caching** - LRU cache with configurable TTL for optimal performance
+- 🎯 **Path Filtering** - Fine-grained control over which paths get converted
+- 🌐 **Framework Agnostic** - Works with Next.js, Express, Hono, Bun, NestJS, and more
+- 🚀 **Edge Compatible** - Runs in Node.js and Edge runtimes
+- 🔒 **SSRF Protection** - Built-in security against server-side request forgery
+- 📦 **Zero Config** - Works out of the box with sensible defaults
+
+## Installation
+
+<Tabs items={['npm', 'pnpm', 'yarn', 'bun']}>
+  <Tab value="npm">
+    ```bash
+    npm install botmd
+    ```
+  </Tab>
+  <Tab value="pnpm">
+    ```bash
+    pnpm add botmd
+    ```
+  </Tab>
+  <Tab value="yarn">
+    ```bash
+    yarn add botmd
+    ```
+  </Tab>
+  <Tab value="bun">
+    ```bash
+    bun add botmd
+    ```
+  </Tab>
+</Tabs>
+
+## Quick Start
+
+Here's a complete Next.js example:
+
+```typescript title="middleware.ts"
+import { Botmd } from 'botmd';
+import { NextRequest, NextResponse } from 'next/server';
+
+const botmd = new Botmd({
+  // Only convert specific paths
+  paths: {
+    allowed: ['/docs/**', '/blog/**'],
+    disallowed: ['/api/**', '/admin/**']
+  },
+  
+  // Enable logging to see bot requests
+  logRequests: true,
+  
+  // Cache for 1 day (default)
+  cache: {
+    enabled: true,
+    ttl: 86400000
+  }
+});
+
+export async function middleware(request: NextRequest) {
+  // Skip internal requests (prevents loops)
+  if (Botmd.shouldSkip(request)) {
+    return NextResponse.next();
+  }
+
+  // Process the request
+  const result = await botmd.createResponse(request);
+  
+  // If not a bot or path not allowed, continue normally
+  if (!result.shouldConvert) {
+    return NextResponse.next();
+  }
+  
+  // Return markdown to the bot
+  return new NextResponse(result.content, { 
+    headers: result.headers 
+  });
+}
+
+export const config = {
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)']
+};
+```
+
+That's it! AI bots now receive clean markdown. ✨
+
+## How It Works
+
+1. **Request Arrives** - Bot or regular user visits your site
+2. **Bot Detection** - Check `Accept: text/markdown` header or user-agent patterns
+3. **Path Check** - Verify path is allowed by your configuration
+4. **Cache Check** - Look for cached markdown with valid TTL
+5. **HTML Fetch** - If not cached, internally fetch HTML (with loop prevention)
+6. **Conversion** - Transform HTML to clean markdown with absolute URLs
+7. **Cache & Return** - Store result and return markdown with proper headers
+
+## What Gets Detected?
+
+Botmd automatically detects 50+ AI bots including:
+
+### AI Assistants
+- **OpenAI**: GPTBot, ChatGPT-User, OAI-SearchBot
+- **Anthropic**: ClaudeBot, Claude-Web
+- **Perplexity**: PerplexityBot, Perplexity-User
+- **Google**: Google-Extended, Googlebot
+- **Meta**: meta-externalfetcher
+
+### Coding Assistants
+- **GitHub Copilot**: GitHubCopilot, CopilotBot
+- **Cursor**: Cursor, CursorAgent, CursorBot
+- **Codeium**: Windsurf, CodeiumAgent
+- **Tabnine**: TabnineAgent
+- **Replit**: ReplitAgent
+
+### Crawlers & Tools
+- **Firecrawl**, **Jina**, **Tavily**, **Exa**
+- **Amazon**, **Apple**, **Microsoft** bots
+- And many more...
+
+[See full bot list](/docs/bot-detection)
+
+## Testing
+
+Test with curl to see it in action:
+
+```bash
+# Regular request - gets HTML
+curl http://localhost:3000/docs
+
+# Bot request - gets Markdown
+curl -H "User-Agent: GPTBot" http://localhost:3000/docs
+
+# Explicit markdown request
+curl -H "Accept: text/markdown" http://localhost:3000/docs
+```
+
+## Next Steps
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
+  <Card href="/docs/usage">
+    <div className="font-semibold">Framework Examples →</div>
+    <p className="text-sm text-muted-foreground">See examples for Next.js, Express, Hono, Bun, and more</p>
+  </Card>
+  
+  <Card href="/docs/api-reference">
+    <div className="font-semibold">API Reference →</div>
+    <p className="text-sm text-muted-foreground">Complete configuration options and API methods</p>
+  </Card>
+  
+  <Card href="/docs/bot-detection">
+    <div className="font-semibold">Bot Detection →</div>
+    <p className="text-sm text-muted-foreground">Learn how bot detection works and customize it</p>
+  </Card>
+</div>
+
+## Performance
+
+- **~14KB minified** - Minimal bundle impact
+- **Zero dependencies** for HTML conversion
+- **LRU cache** prevents redundant processing
+- **Edge compatible** - runs anywhere JavaScript runs
+- **Fast path matching** - optimized for common patterns
+
+## Security
+
+- **SSRF Protection** - Blocks private IPs and localhost
+- **Loop Prevention** - Internal requests automatically skipped
+- **URL Validation** - Only HTTP/HTTPS protocols allowed
+- **Size Limits** - Configurable HTML size limits
+
+---
+
+Ready to make your content AI-accessible? [Get started with examples](/docs/usage) →
