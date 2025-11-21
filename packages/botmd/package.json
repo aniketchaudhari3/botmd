@@ -37,7 +37,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/aniketchaudhari3/botmd.git",
+    "url": "git+https://github.com/aniketchaudhari3/botmd.git",
     "directory": "packages/botmd"
   },
   "homepage": "https://github.com/aniketchaudhari3/botmd#readme",
@@ -52,4 +52,3 @@
     "typescript": "^5.6.3"
   }
 }
-
