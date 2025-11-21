@@ -1,6 +1,6 @@
 {
   "name": "botmd",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Universal AI bot markdown middleware for any JS backend",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",

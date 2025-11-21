@@ -17,7 +17,7 @@
     "fumadocs-ui": "15.8.3",
     "fumadocs-core": "15.8.3",
     "fumadocs-mdx": "12.0.2",
-    "botmd": "^1.0.0"
+    "botmd": "^1.0.2"
   },
   "devDependencies": {
     "@types/node": "24.6.2",
