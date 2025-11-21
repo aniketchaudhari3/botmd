@@ -7,7 +7,7 @@ Convert your HTML pages to clean, structured markdown automatically when AI bots
 [![npm version](https://img.shields.io/npm/v/botmd.svg)](https://www.npmjs.com/package/botmd)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**📚 [View Full Documentation →](https://botmd.vercel.app)**
+**📚 [View Full Documentation →](https://botmd-docs.vercel.app)**
 
 ## ✨ Features
 
